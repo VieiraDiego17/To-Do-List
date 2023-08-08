@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="button_corner_radius">50dp</dimen>
+    <dimen name="text_size_large">20sp</dimen>
+    <dimen name="text_size_medium">10sp</dimen>
+    <dimen name="spacing_normal">16dp</dimen>
+    <!-- Adicione mais dimensões conforme necessário -->
+</resources>
