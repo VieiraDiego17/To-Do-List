@@ -1,22 +1,23 @@
 package com.example.todoapp.ui
 
 import CategoryAdapter
-import android.app.AlertDialog
-import android.content.Context
+import TaskInnerAdapter
+import android.annotation.SuppressLint
 import android.os.Bundle
-import android.view.LayoutInflater
+import android.util.Log
 import android.view.View
 import android.widget.ArrayAdapter
-import android.widget.Button
-import android.widget.EditText
-import android.widget.Spinner
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.example.todoapp.R
+import com.example.todoapp.databinding.ActivityMainBinding
 import com.example.todoapp.model.Category
 import com.example.todoapp.model.Task
+import com.google.firebase.FirebaseApp
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import kotlin.random.Random
 
 
@@ -26,10 +27,17 @@ class MainActivity : AppCompatActivity() {
     private val categoryNames = mutableListOf<String>()
     private lateinit var categoryAdapter: CategoryAdapter
     private lateinit var categoryAdapterSpinner: ArrayAdapter<String>
+    private val taskAdapter = TaskInnerAdapter(mutableListOf())
+    private lateinit var binding: ActivityMainBinding
+    private lateinit var tasks: MutableList<Task>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        FirebaseApp.initializeApp(this)
+        tasks = mutableListOf()
 
         setupCategoryRecyclerView()
         setupCategorySpinner()
@@ -37,10 +45,59 @@ class MainActivity : AppCompatActivity() {
         setupAddCategoryButton()
         setupAddTaskButton()
 
+        // Chamar a função eventListener() para recuperar os dados do Firebase
+        eventListener()
+
     }
 
+    override fun onStart() {
+        super.onStart()
+        eventListener() // Atualiza os dados ao iniciar a atividade
+    }
+
+    override fun onResume() {
+        super.onResume()
+        eventListener() // Atualiza os dados ao retomar a atividade
+    }
+
+    private fun eventListener() {
+        val database = FirebaseDatabase.getInstance().reference
+        val tasksRef = database.child("tasks")
+
+        val tasksListener = object : ValueEventListener {
+            @SuppressLint("NotifyDataSetChanged")
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val newTasks = mutableListOf<Task>()
+                for (taskSnapshot in snapshot.children) {
+                    val task = taskSnapshot.getValue(Task::class.java)
+                    task?.let { newTasks.add(it) }
+                }
+
+                // Limpa a lista atual e adiciona os novos dados
+                tasks.clear()
+                tasks.addAll(newTasks)
+
+                // Log para depuração
+                Log.d("Firebase", "Retrieved tasks: ${tasks.joinToString(", ")}")
+
+                // Atualiza os dados no adaptador
+                taskAdapter.updateTasks(tasks)
+                taskAdapter.notifyDataSetChanged() // Notificar a atualização para atualizar a UI
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                // Tratar erros de leitura do Firebase
+                Log.e("Firebase", "Failed to retrieve tasks: ${error.message}")
+            }
+        }
+
+        tasksRef.addValueEventListener(tasksListener)
+    }
+
+
+
     private fun setupCategoryRecyclerView() {
-        val recyclerView: RecyclerView = findViewById(R.id.categoryRecyclerView)
+        val recyclerView = binding.categoryRecyclerView
         val layoutManager = LinearLayoutManager(this)
         categoryAdapter = CategoryAdapter(categoryList)
         recyclerView.layoutManager = layoutManager
@@ -48,63 +105,87 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupCategorySpinner() {
-        val categorySpinner: Spinner = findViewById(R.id.categorySpinner)
-        categoryAdapterSpinner = ArrayAdapter(this, android.R.layout.simple_spinner_item, categoryNames)
+        val categorySpinner = binding.categorySpinner
+        categoryAdapterSpinner =
+            ArrayAdapter(this, android.R.layout.simple_spinner_item, categoryNames)
         categoryAdapterSpinner.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         categorySpinner.adapter = categoryAdapterSpinner
     }
 
-
     private fun setupAddCategoryButton() {
-        val newCategoryEditText: EditText = findViewById(R.id.newCategoryEditText)
-        val addCategoryButton: Button = findViewById(R.id.addCategoryButton)
+        val newCategoryEditText = binding.newCategoryEditText
+        val addCategoryButton = binding.addCategoryButton
         addCategoryButton.setOnClickListener {
             val newCategoryName = newCategoryEditText.text.toString()
             if (newCategoryName.isNotBlank()) {
                 val newCategory = Category(newCategoryName, mutableListOf())
                 categoryList.add(newCategory)
-                categoryNames.add(newCategoryName) // Adicione o novo nome à lista
-                categoryAdapter.notifyDataSetChanged() // Notifique o adaptador do RecyclerView
-                categoryAdapterSpinner.notifyDataSetChanged() // Notifique o adaptador do Spinner
+                categoryNames.add(newCategoryName)
+                categoryAdapter.notifyDataSetChanged()
+                categoryAdapterSpinner.notifyDataSetChanged()
                 newCategoryEditText.text.clear()
             }
         }
     }
 
     private fun setupAddTaskButton() {
-        val taskDescriptionEditText: EditText = findViewById(R.id.taskDescriptionEditText)
-        val quantityEditText: EditText = findViewById(R.id.quantityEditText)
-        val specificModelEditText: EditText = findViewById(R.id.specificModelEditText)
-        val categorySpinner: Spinner = findViewById(R.id.categorySpinner)
-        val addTaskButton: Button = findViewById(R.id.addTaskButton)
+        val taskDescriptionEditText = binding.taskDescriptionEditText
+        val quantityEditText = binding.quantityEditText
+        val specificModelEditText = binding.specificModelEditText
+        val categorySpinner = binding.categorySpinner
+        val addTaskButton = binding.addTaskButton
+
         addTaskButton.setOnClickListener {
             val description = taskDescriptionEditText.text.toString()
             val quantity = quantityEditText.text.toString()
             val specificModel = specificModelEditText.text.toString()
 
-            // Verifique se uma categoria foi selecionada antes de prosseguir
             val selectedCategoryName = categorySpinner.selectedItem?.toString()
 
             if (description.isNotBlank() && quantity.isNotBlank() && !selectedCategoryName.isNullOrBlank()) {
-                val task = Task(Random.nextInt(), description, quantity, specificModel, selectedCategoryName)
+                val task = Task(
+                    Random.nextInt().toString(),
+                    description,
+                    quantity,
+                    specificModel,
+                    selectedCategoryName
+                )
                 val selectedCategory = categoryList.find { it.name == selectedCategoryName }
+
+                taskAdapter.addTask(task)
+                taskAdapter.notifyDataSetChanged()
+
                 selectedCategory?.tasks?.add(task)
                 categoryAdapter.notifyDataSetChanged()
+
                 taskDescriptionEditText.text.clear()
                 quantityEditText.text.clear()
                 specificModelEditText.text.clear()
             } else {
-                Toast.makeText(this, "Preencha todos os campos corretamente", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Preencha todos os campos corretamente", Toast.LENGTH_SHORT)
+                    .show()
             }
         }
     }
 
-
     fun editTaskClick(view: View) {
         val taskPosition = view.tag as Int // Obtenha a posição da tarefa da tag do botão
-        val selectedCategory = categoryList[0] // Altere isso para obter a categoria correta
-        val task = selectedCategory.tasks[taskPosition] // Obtenha a tarefa da categoria
-        
+        val task = taskAdapter.getTask(taskPosition) // Obtenha a tarefa do adapter
+
+        // Abra o diálogo de edição de tarefa
+        taskAdapter.showEditDialog(
+            task,
+            taskPosition,
+            this
+        ) // Substitua this pelo contexto apropriado
+
+        // Ao salvar as alterações no diálogo de edição, você pode chamar a função updateTask
+        //taskAdapter.updateTask(task)
+
+        // Caso você esteja usando o adaptador de categorias para exibir as tarefas na lista,
+        // você também pode chamar a função updateTasks para atualizar a lista de tarefas da categoria
+        //selectedCategory.tasks = taskAdapter.tasks
+        categoryAdapter.notifyDataSetChanged()
     }
 }
 
