@@ -3,15 +3,8 @@ import android.content.Context
 import android.graphics.Paint
 import android.util.Log
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.EditText
-import android.widget.ImageView
-import android.widget.TextView
-import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
-import com.example.todoapp.R
 import com.example.todoapp.databinding.DialogEditTaskBinding
 import com.example.todoapp.databinding.ListItemTaskBinding
 import com.example.todoapp.model.Task
@@ -27,8 +20,9 @@ class TaskInnerAdapter(private val tasks: MutableList<Task>) :
 
     private var itemClickListener: OnItemClickListener? = null
     private val database: DatabaseReference = FirebaseDatabase.getInstance()
-        //.reference.child("tasks")
-        .reference
+        .reference.child("categories")
+
+
 
     fun setOnItemClickListener(listener: OnItemClickListener) {
         itemClickListener = listener
@@ -138,7 +132,9 @@ class TaskInnerAdapter(private val tasks: MutableList<Task>) :
         alertDialogBuilder.setTitle("Excluir Tarefa")
         alertDialogBuilder.setMessage("Tem certeza de que deseja excluir esta tarefa?")
         alertDialogBuilder.setPositiveButton("Excluir") { _, _ ->
-            deleteTask(task.id, taskPosition)
+            tasks.removeAt(taskPosition)
+            notifyItemRemoved(taskPosition)
+            deleteTask(task)
         }
         alertDialogBuilder.setNegativeButton("Cancelar", null)
 
@@ -146,14 +142,11 @@ class TaskInnerAdapter(private val tasks: MutableList<Task>) :
         alertDialog.show()
     }
 
-    private fun deleteTask(taskId: String, taskPosition: Int) {
-        val taskRef = database.child("tasks").child(taskId)
+    fun deleteTask(task: Task) {
+        val taskRef = database.child(task.categoryName).child("tasks").child(task.id)
 
         taskRef.removeValue()
             .addOnSuccessListener {
-                tasks.removeAt(taskPosition)
-                notifyItemRemoved(taskPosition)
-                notifyItemRangeChanged(taskPosition, tasks.size - taskPosition)
                 Log.d("Firebase", "Task deleted successfully from Firebase")
             }
             .addOnFailureListener { error ->
@@ -162,31 +155,44 @@ class TaskInnerAdapter(private val tasks: MutableList<Task>) :
             }
     }
 
-
-    fun updateTasks(newTasks: List<Task>) {
-        tasks.clear()
-        tasks.addAll(newTasks)
-        notifyDataSetChanged()
-    }
+//    fun updateTasks(newTasks: List<Task>) {
+//        tasks.clear()
+//        tasks.addAll(newTasks)
+//        notifyDataSetChanged()
+//    }
 
     fun updateTask(updatedTask: Task) {
         val position = tasks.indexOfFirst { it.id == updatedTask.id }
         if (position != -1) {
             tasks[position] = updatedTask
             notifyItemChanged(position)
-            database.child("tasks").child(updatedTask.id).setValue(updatedTask)
-            Log.d("Firebase", "Task updated successfully on Firebase")
+            updateTaskInFirebase(updatedTask) // Atualiza no Firebase também
         }
     }
 
+    private fun updateTaskInFirebase(updatedTask: Task) {
+        val taskRef = database.child(updatedTask.categoryName)
+            .child("tasks").child(updatedTask.id)
+        taskRef.setValue(updatedTask)
+            .addOnSuccessListener {
+                Log.d("Firebase", "Task updated successfully on Firebase")
+            }
+            .addOnFailureListener { error ->
+                // Handle the error appropriately
+                Log.e("Firebase", "Error updating task on Firebase: ${error.message}")
+            }
+    }
 
     fun getTask(position: Int): Task {
         return tasks[position]
     }
 
     fun addTask(task: Task) {
-        val newTaskRef = database.child("tasks").push() // Gera uma chave única
+        val tasksRef = database.child(task.categoryName).child("tasks")
+        val newTaskRef = tasksRef.push() // Gera uma chave única
         task.id = newTaskRef.key.toString() // Define o ID gerado como ID da tarefa
+
+
 
         newTaskRef.setValue(task)
             .addOnSuccessListener {
@@ -199,5 +205,4 @@ class TaskInnerAdapter(private val tasks: MutableList<Task>) :
                 Log.e("Firebase", "Error adding task to Firebase: ${error.message}")
             }
     }
-
 }

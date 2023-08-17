@@ -1,28 +1,49 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:orientation="vertical"
-    android:padding="8dp">
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="10dp">
 
-    <TextView
-        android:id="@+id/categoryNameTextView"
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/categoryNameTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/green"
+            tools:text="Nome Categoria"/>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/green"/>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/taskRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:divider="@android:color/darker_gray"
+            android:dividerHeight="1dp"/>
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/deleteCategoryButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:textColor="@color/green"
-        tools:text="Nome Categoria"/>
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@color/green"/>
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/taskRecyclerView"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:divider="@android:color/darker_gray"
-        android:dividerHeight="1dp"/>
+        android:layout_gravity="center_vertical"
+        android:layout_marginStart="10dp"
+        android:clickable="true"
+        android:contentDescription="Excluir"
+        android:focusable="true"
+        android:padding="8dp"
+        android:src="@drawable/close" />
 </LinearLayout>
+
