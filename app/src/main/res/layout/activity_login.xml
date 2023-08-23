@@ -29,7 +29,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/logo"
-            android:text="teste@teste.com"
+            android:text="E-mail"
             android:hint="Email" />
 
         <EditText
